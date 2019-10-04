@@ -1,0 +1,10 @@
+language: python
+
+services:
+  - docker
+
+install:
+  - make prepare
+
+script:
+  - make run

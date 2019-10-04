@@ -11,7 +11,6 @@ the key, along with its corresponding value. If the store doesn't contain a
 value for the key, the server responds with the key, along with a flag
 indicating the value is not present.
 
-
 ## Key-value Protocol
 
 The client and server communicate with a custom protocol. The protocol has two
@@ -35,7 +34,6 @@ Packet sent from client to server:
     | key (8 bits)         |  Request header
     +----------------------+
 
-
 ### Response
 
 Response packet from server to client:
@@ -52,7 +50,6 @@ Response packet from server to client:
     | value (32 bits)      |
     +----------------------+
 
-
 ## Client/Server Programs
 
 Implementations of the client and server are provided for you in `client.py`
@@ -61,7 +58,6 @@ can run them locally on your computer (i.e. without the need for running BMV2
 or Mininet). Start the server:
 
     ./server.py
-
 
 In another terminal, read key `1` with the client:
 
@@ -106,7 +102,6 @@ miss, and the packet should be forwarded as normal.
 To implement the register-based cache, you can use the key as an index into the
 register cell that contains the value. This means that with an 8-bit key, the
 register array needs at least 2^8 cells.
-
 
 ## Getting started
 
