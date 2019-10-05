@@ -31,35 +31,39 @@ s1.insertTableEntry(
 
 
 # Now, we can test that everything works
+if __name__ == '__main__':
 
-# Start CLI for debugging
-# CLI(net)
+    # Start CLI for debugging
+    if '--cli' in sys.argv:
+        CLI(net)
 
-# Start the server with some key-values
-server = h1.popen('./server.py 1=11 2=22', stdout=sys.stdout, stderr=sys.stdout)
-tcpdump = h2.popen('tcpdump -vv', stdout=sys.stdout, stderr=sys.stdout)
-time.sleep(2) # wait for the server to be listenning
+    # Start the server with some key-values
+    server = h1.popen('./server.py 1=11 2=22', stdout=sys.stdout, stderr=sys.stdout)
+    if '--tcpdump' in sys.argv:
+        tcpdump = h2.popen('tcpdump -vv', stdout=sys.stdout, stderr=sys.stdout)
+    time.sleep(2) # wait for the server to be listenning
 
-print('query 1')
-out = h2.cmd('./client.py 10.0.0.1 1') # expect a resp from server
-print(out)
-assert out.strip() == "11"
-print('query 1')
-out = h2.cmd('./client.py 10.0.0.1 1') # expect a value from switch cache (registers)
-print(out)
-assert out.strip() == "11"
-print('query 2')
-out = h2.cmd('./client.py 10.0.0.1 2') # resp from server
-print(out)
-assert out.strip() == "22"
-print('query 3')
-out = h2.cmd('./client.py 10.0.0.1 3') # from switch cache (table)
-print(out)
-assert out.strip() == "33"
-print('query 123')
-out = h2.cmd('./client.py 10.0.0.1 123') # resp not found from server
-print(out)
-assert out.strip() == "NOTFOUND"
+    print('query 1')
+    out = h2.cmd('./client.py 10.0.0.1 1') # expect a resp from server
+    print(out)
+    assert out.strip() == "11"
+    print('query 1')
+    out = h2.cmd('./client.py 10.0.0.1 1') # expect a value from switch cache (registers)
+    print(out)
+    assert out.strip() == "11"
+    print('query 2')
+    out = h2.cmd('./client.py 10.0.0.1 2') # resp from server
+    print(out)
+    assert out.strip() == "22"
+    print('query 3')
+    out = h2.cmd('./client.py 10.0.0.1 3') # from switch cache (table)
+    print(out)
+    assert out.strip() == "33"
+    print('query 123')
+    out = h2.cmd('./client.py 10.0.0.1 123') # resp not found from server
+    print(out)
+    assert out.strip() == "NOTFOUND"
 
-tcpdump.terminate()
-server.terminate()
+    if '--tcpdump' in sys.argv:
+        tcpdump.terminate()
+    server.terminate()
