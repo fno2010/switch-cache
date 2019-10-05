@@ -1,6 +1,23 @@
 # In-Network Cache
 
-In this assignment you will implement a cache for a simple key-value service.
+[![Travis (.com)](https://travis-ci.com/fno2010/switch-cache.svg?token=F5zAaxpbqyncPJymSyQA)](https://travis-ci.com/fno2010/switch-cache)
+
+> CPSC634: In this assignment you will implement a cache for a simple key-value service.
+
+Implement a simple in-network cache in P4.
+
+> Although p4app is a lightweight tool to run P4 program, it is still a heavy
+> load to run the docker service in my PC. Fortunately,
+> [travis-ci][travis-ci-docker] provides the docker service support so that I
+> can test my program easily. Thanks, [travis-ci][travis-ci-docker]!
+
+Limitations:
+
+- Current register cache is inefficient.
+- Current UDP checksum is not enabled.
+- Cannot handle ARP (static ARP tables now).
+
+[travis-ci-docker]: https://docs.travis-ci.com/user/docker/
 
 ## Key-value service overview
 
@@ -24,6 +41,7 @@ of the headers is outlined below.
 
 Packet sent from client to server:
 
+``` ascii
     +----------------------+
     |       ........       |  Ethernet
     +----------------------+
@@ -33,11 +51,13 @@ Packet sent from client to server:
     +----------------------+
     | key (8 bits)         |  Request header
     +----------------------+
+```
 
 ### Response
 
 Response packet from server to client:
 
+``` ascii
     +----------------------+
     |       ........       |  Ethernet
     +----------------------+
@@ -49,6 +69,7 @@ Response packet from server to client:
     | is_valid (8 bits)    |  Response header
     | value (32 bits)      |
     +----------------------+
+```
 
 ## Client/Server Programs
 
@@ -57,26 +78,36 @@ and `server.py`. They use the protocol definitions in `cache_protocol.py`. You
 can run them locally on your computer (i.e. without the need for running BMV2
 or Mininet). Start the server:
 
-    ./server.py
+``` bash
+./server.py
+```
 
 In another terminal, read key `1` with the client:
 
-    ./client.py 127.0.0.1 1
+``` bash
+./client.py 127.0.0.1 1
+```
 
 It should print `11`, which is the default value for key `1`. The server's
 store has these default values:
 
-    store = {1: 11, 2: 22}
+``` bash
+store = {1: 11, 2: 22}
+```
 
 You can override them when you start the server, e.g.
 
-    ./server.py 1=123 2=345 3=678
+``` bash
+./server.py 1=123 2=345 3=678
+```
 
 ## Switch-based cache
 
 Packets travel through exactly one switch between the client and the server:
 
-    client (h2) <---> switch (s1) <---> server (h1)
+``` ascii
+client (h2) <---> switch (s1) <---> server (h1)
+```
 
 You should implement a cache in the switch. The cache is transparent, in
 that neither the server nor the client is aware of the cache. When a client
@@ -103,69 +134,92 @@ To implement the register-based cache, you can use the key as an index into the
 register cell that contains the value. This means that with an 8-bit key, the
 register array needs at least 2^8 cells.
 
-## Getting started
+## Getting Started
 
-We have provided a p4app with boilerplate code to get started with:
+Make sure you have installed `make` and `docker`.
 
-- `cache.p4` is a boilerplate P4 program in which you should implement your
-  cache functionality.
+To automatically set up your environment:
 
-- `main.py` starts a Mininet network with a single switch connecting a client
-  and server host. You should extend this with P4Runtime calls to populate
-  the table-based cache on the switch.
+``` bash
+$ make prepare
+git clone -b rc-2.0.0 https://github.com/p4lang/p4app.git
+Cloning into 'p4app'...
+remote: Enumerating objects: 597, done.
+remote: Total 597 (delta 0), reused 0 (delta 0), pack-reused 597
+Receiving objects: 100% (597/597), 151.92 KiB | 1.95 MiB/s, done.
+Resolving deltas: 100% (309/309), done.
+p4app/p4app update
+rc-2.0.0: Pulling from p4lang/p4app
+Status: Downloaded newer image for p4lang/p4app:rc-2.0.0
+```
 
-Before you start implementing the cache functionality, you should get basic
-IPv4 forwarding working. You can look at these examples for how to implement
-both the data plane and control plane:
+(**Optional**) If you are also running `docker` in a Windows-based bash environment (e.g.,
+WSL) like me, you can apply a patch to the original `p4app` tool to make it
+recognize your file path correctly:
 
-- [p4app examples](https://github.com/p4lang/p4app/tree/rc-2.0.0/examples)
-- [P4 tutorial exercises](https://github.com/p4lang/tutorials/tree/p4app/p4app-exercises)
+``` bash
+$ make patch
+if [ ! -d p4app ]; then \
+        git clone -b rc-2.0.0 https://github.com/p4lang/p4app.git; \
+fi
+p4app/p4app update
+rc-2.0.0: Pulling from p4lang/p4app
+Digest: sha256:f4a376e61a84d4cee1e4a19b9ff45a140327d5c1ff2021ed45f9101d26fb812d
+Status: Image is up to date for p4lang/p4app:rc-2.0.0
+docker.io/p4lang/p4app:rc-2.0.0
+cd p4app
+git apply ../win-docker.patch
+```
 
-Specifically, for implementing IPv4 forwarding, you should look at the [control
-plane](https://github.com/p4lang/tutorials/blob/p4app/p4app-exercises/basic.p4app/main.py#L61)
-and [data
-plane](https://github.com/p4lang/tutorials/blob/p4app/p4app-exercises/basic.p4app/solution/basic.p4#L100)
-from the `basic.p4app` tutorial exercise.
+To run this p4app:
 
-## Resources
+``` bash
+$ make run
+p4app/p4app run cache.p4app
+> python /p4app/main.py
+*** Error setting resource limits. Mininet's performance may be affected.
+> p4c-bm2-ss --std p4-16 "/p4app/cache.p4" -o "/tmp/p4app-logs/cache.json" --p4runtime-files "/tmp/p4app-logs/cache.p4info.txt"
+tcpdump: listening on eth0, link-type EN10MB (Ethernet), capture size 262144 bytes
+query 1
+15:04:23.064930 IP (tos 0x0, ttl 64, id 47498, offset 0, flags [DF], proto UDP (17), length 29)
+    10.0.0.2.47509 > 10.0.0.1.1234: [udp sum ok] UDP, length 1
+('10.0.0.2', 47509) -> Req(1), <- Res(11)
+15:04:23.067511 IP (tos 0x0, ttl 63, id 21629, offset 0, flags [DF], proto UDP (17), length 34)
+    10.0.0.1.1234 > 10.0.0.2.47509: [udp sum ok] UDP, length 6
+11
 
-You can get familiar with the P4_16 language specification:
-https://p4.org/p4-spec/docs/P4-16-v1.1.0-spec.html
+query 1
+15:04:23.092308 IP (tos 0x0, ttl 64, id 47499, offset 0, flags [DF], proto UDP (17), length 29)
+    10.0.0.2.45280 > 10.0.0.1.1234: [udp sum ok] UDP, length 1
+15:04:23.093151 IP (tos 0x0, ttl 63, id 47499, offset 0, flags [DF], proto UDP (17), length 34)
+    10.0.0.1.1234 > 10.0.0.2.45280: [no cksum] UDP, length 6
+11
 
-Registers are not part of the P4 language specfication, but are an extern in
-the
-[v1model.p4](https://github.com/p4lang/p4c/blob/a1c3e0b868d5be2c7921cc8a80cf1ea6c4aba80d/p4include/v1model.p4#L109)
-used by BMV2. For sample usage, take a look at the
-[register.p4app](https://github.com/p4lang/p4app/tree/rc-2.0.0/examples/registers.p4app)
-example.
+query 2
+15:04:23.133726 IP (tos 0x0, ttl 64, id 47503, offset 0, flags [DF], proto UDP (17), length 29)
+    10.0.0.2.40699 > 10.0.0.1.1234: [udp sum ok] UDP, length 1
+('10.0.0.2', 40699) -> Req(2), <- Res(22)
+15:04:23.139191 IP (tos 0x0, ttl 63, id 21636, offset 0, flags [DF], proto UDP (17), length 34)
+    10.0.0.1.1234 > 10.0.0.2.40699: [udp sum ok] UDP, length 6
+22
+
+query 3
+15:04:23.176333 IP (tos 0x0, ttl 64, id 47504, offset 0, flags [DF], proto UDP (17), length 29)
+    10.0.0.2.49337 > 10.0.0.1.1234: [udp sum ok] UDP, length 1
+15:04:23.178082 IP (tos 0x0, ttl 63, id 47504, offset 0, flags [DF], proto UDP (17), length 34)
+    10.0.0.1.1234 > 10.0.0.2.49337: [no cksum] UDP, length 6
+33
+
+query 123
+15:04:23.227228 IP (tos 0x0, ttl 64, id 47507, offset 0, flags [DF], proto UDP (17), length 29)
+    10.0.0.2.42384 > 10.0.0.1.1234: [udp sum ok] UDP, length 1
+('10.0.0.2', 42384) -> Req(123), <- Res(NOTFOUND)
+15:04:23.230451 IP (tos 0x0, ttl 63, id 21641, offset 0, flags [DF], proto UDP (17), length 34)
+    10.0.0.1.1234 > 10.0.0.2.42384: [udp sum ok] UDP, length 6
+NOTFOUND
 
 
-## Tips
-
-- If you're changing the packet, don't forget to:
-    - update the IP and UPD length fields; and
-    - set the UDP checksum to 0.
-- Don't use `valid` as a header field, as it conflicts with setValid/setInvalid in P4.
-- p4app uses Mininet to connect hosts h1 and h2 to switch s1. The port numbers
-  are assigned in increasing order, so h1 is connected to s2 on port 1, and h2 on
-  port 2.
-- After you run p4app, check that it creates the directory `/tmp/p4app-logs`.
-    - If this directory does not exit, there may be a problem with your Docker installation.
-- The switch dumps sent/received packets in `/tmp/p4app-logs/s1-eth*.pcap`
-    - `eth1` is connected to h1, and `eth2` to h2
-    - you can inspect the pcaps with [wireshark](https://www.wireshark.org/)
-- You can also run wireshark on a single host, e.g. on host2:
-
-    ~/p4app/p4app exec m h2 tcpdump -Uw - | wireshark -ki -
-
-
-## Running
-
-First, make sure you have p4app:
-
-    cd ~/
-    git clone --branch rc-2.0.0 https://github.com/p4lang/p4app.git
-
-Then run this p4app:
-
-    ~/p4app/p4app run cache.p4app
+10 packets captured
+10 packets received by filter
+0 packets dropped by kernel
+```

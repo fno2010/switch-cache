@@ -1,0 +1,22 @@
+diff --git a/p4app b/p4app
+index ac64add..31d8b4b 100755
+--- a/p4app
++++ b/p4app
+@@ -18,7 +18,7 @@ P4APP_CONTAINER_ARGS=${P4APP_CONTAINER_ARGS:-""}
+ 
+ 
+ myrealpath() {
+-    [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
++    [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}" | sed 's_^/mnt/c_c:_'
+ }
+ 
+ P4APP_LOGDIR=$(myrealpath "${P4APP_LOGDIR:-/tmp/p4app-logs}")
+@@ -26,7 +26,7 @@ P4APP_LOGDIR=$(myrealpath "${P4APP_LOGDIR:-/tmp/p4app-logs}")
+ 
+ function get_abs_filename() {
+   # Convert a possibly-relative path to an absolute path.
+-  echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
++  echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")" | sed 's_^/mnt/c_c:_'
+ }
+ 
+ function normalize_path() {

@@ -16,7 +16,7 @@ for i in [1, 2]:
     host = hosts[i-1]
     s1.insertTableEntry(
         table_name='MyIngress.ipv4_lpm',
-        match_fields={'hdr.ipv4.dstAddr': ['10.0.0.%d' % i, 32]},
+        match_fields={'hdr.ipv4.dstAddr': [host.IP(), 32]},
         action_name='MyIngress.ipv4_forward',
         action_params={'dstAddr': host.MAC(), 'port': i}
     )

@@ -39,13 +39,13 @@ header cache_res_t {
     bit<32> value;
 }
 
-struct cache_metadata_t {
-    bit<8>  isvalid;
-    bit<32> value;
-}
+// struct cache_metadata_t {
+//     bit<8>  isvalid;
+//     bit<32> value;
+// }
 
 struct metadata {
-    cache_metadata_t cache_metadata;
+    // cache_metadata_t cache_metadata;
 }
 
 struct headers {
@@ -85,13 +85,6 @@ parser MyParser(packet_in packet,
         }
     }
 
-    // state other_port {
-    //     transition select(hdr.udp.srcPort) {
-    //         (PORT_CACHE_REQ, _): parse_cache_res;
-    //         default: accept;
-    //     }
-    // }
-
     state parse_cache_req {
         packet.extract(hdr.cache_req);
         transition accept;
@@ -124,24 +117,30 @@ control MyIngress(inout headers hdr,
     }
 
     action cache_hint(bit<32> value) {
+        // disable cache request header
         hdr.cache_req.setInvalid();
 
+        // build cache response header
         hdr.cache_res.setValid();
         hdr.cache_res.key = hdr.cache_req.key;
         hdr.cache_res.isvalid = 0x1;
         hdr.cache_res.value = value;
 
+        // rebuild UDP header
         socketPort_t originSrcPort = hdr.udp.srcPort;
         hdr.udp.srcPort = hdr.udp.dstPort;
         hdr.udp.dstPort = originSrcPort;
         hdr.udp.len = hdr.udp.len + 5;
+        // disable UDP checksum (no idea how to compute it in P4)
         hdr.udp.checksum = 0;
 
+        // rebuild IPv4 header
         ipv4Addr_t originSrcIp = hdr.ipv4.srcAddr;
         hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
         hdr.ipv4.dstAddr = originSrcIp;
         hdr.ipv4.totalLen = hdr.ipv4.totalLen + 5;
 
+        // rebuild Ethernet header
         macAddr_t originSrcMac = hdr.ethernet.srcAddr;
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = originSrcMac;
@@ -170,32 +169,30 @@ control MyIngress(inout headers hdr,
             cache_hint;
             NoAction;
         }
-        size = 1024;
+        size = 256; // enough for 8-bit key
         default_action = NoAction();
     }
 
     apply {
         if (hdr.ipv4.isValid()) {
             if (hdr.cache_req.isValid()) {
-                // lookup cache table
+                // lookup table cache
                 kw_cache.apply();
+                // lookup register cache if table cache miss
                 bit<33> cachei;
                 cacheReg.read(cachei, (bit<32>)hdr.cache_req.key);
                 if (cachei & (bit<33>)0x100000000 != 0) {
+                    // register cache hint
                     cache_hint((bit<32>)(cachei & 0xFFFFFFFF));
-                } else {
-                    ipv4_lpm.apply();
                 }
-            } else {
-                if (hdr.cache_res.isValid()) {
-                    // refresh cache table
-                    bit<33> cacheo;
-                    cacheo = 33w1 << 32;
-                    cacheo = cacheo | (bit<33>)hdr.cache_res.value;
-                    cacheReg.write((bit<32>)hdr.cache_res.key, cacheo);
-                }
-                ipv4_lpm.apply();
+            } else if (hdr.cache_res.isValid()) {
+                // update register cache
+                bit<33> cacheo;
+                cacheo = 33w1 << 32;
+                cacheo = cacheo | (bit<33>)hdr.cache_res.value;
+                cacheReg.write((bit<32>)hdr.cache_res.key, cacheo);
             }
+            ipv4_lpm.apply();
         }
     }
 }
@@ -203,7 +200,7 @@ control MyIngress(inout headers hdr,
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
-    apply { }
+    apply { /* empty */ }
 }
 
 control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
