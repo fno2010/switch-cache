@@ -1,6 +1,6 @@
 # In-Network Cache
 
-[![Travis (.com)](https://travis-ci.com/fno2010/switch-cache.svg?token=F5zAaxpbqyncPJymSyQA)](https://travis-ci.com/fno2010/switch-cache)
+[![Travis Status](https://travis-ci.org/fno2010/switch-cache.svg?branch=master)](https://travis-ci.org/fno2010/switch-cache)
 
 > CPSC634: In this assignment you will implement a cache for a simple key-value service.
 
